@@ -1,35 +1,45 @@
+# Nome do fluxo de trabalho (Workflow) de CI/CD para identificar no GitHub Actions
 name: Build and deploy Python app to Azure Web App - pandafacts
 
+# Define os gatilhos: o pipeline roda ao fazer 'push' na branch main ou manualmente
 on:
   push:
     branches:
       - main
   workflow_dispatch:
 
+# Conjunto de tarefas organizadas em estágios (jobs)
 jobs:
+  # Primeiro estágio: Compilação e preparação dos arquivos
   build:
+    # Máquina virtual Linux onde os comandos serão executados
     runs-on: ubuntu-latest
+    # Permissões necessárias para ler o código do repositório
     permissions:
       contents: read
 
     steps:
+      # Passo 1: Copia o código do repositório para dentro da máquina virtual
       - uses: actions/checkout@v4
 
-      # NOVO STEP DO EXERCICIO 3
+      # NOVO STEP DO EXERCÍCIO 3: Imprime mensagem no console antes do build
       - name: Log de Inicio
         run: echo "Iniciando o deploy do meu projeto!"
 
+      # Passo 2: Configura a versão do Python 3.14 na máquina do pipeline
       - name: Set up Python version
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
+      # Passo 3: Cria ambiente virtual e instala as bibliotecas do requirements.txt
       - name: Create and Start virtual environment
         run: |
           python -m venv antenv
           source antenv/bin/activate
           pip install -r requirements.txt
-                
+
+      # Passo 4: Empacota os arquivos (exceto o venv) para enviar ao estágio de deploy
       - name: Upload artifact for deployment jobs
         uses: actions/upload-artifact@v4
         with:
@@ -38,19 +48,24 @@ jobs:
             .
             !antenv/
 
+  # Segundo estágio: Publicação efetiva na Azure
   deploy:
+    # Define que este estágio depende do sucesso do estágio 'build'
     runs-on: ubuntu-latest
     needs: build
+    # Permissões para autenticação via token na nuvem
     permissions:
       id-token: write
       contents: read
 
     steps:
+      # Passo 5: Baixa os arquivos que foram empacotados no estágio de build
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
           name: python-app
-      
+
+      # Passo 6: Autentica na sua conta Azure usando segredos de segurança
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -58,6 +73,7 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_CE230410AE20473B918092EA9D433AB2 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_17C69E55D7474D13BA86458280571521 }}
 
+      # Passo 7: Envia os arquivos para o AppService chamado 'pandafacts' na Azure
       - name: 'Deploy to Azure Web App'
         uses: azure/webapps-deploy@v3
         with:
